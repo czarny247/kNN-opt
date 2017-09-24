@@ -2,9 +2,13 @@
 #define DATA_HANDLER_HPP_
 
 #include <algorithm>
+#include <chrono>
+#include <ctime>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <random>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -40,7 +44,7 @@ public:
         }
     }
 
-    void printData()
+    void printData() const
     {
         auto idx = 1;
         for (const auto& dataObject : dataObjects_)
@@ -52,8 +56,67 @@ public:
         }
     }
 
+    void printTrainSet() const
+    {
+        auto idx = 1;
+        std::cout << "###### TRAIN SET ######\n";
+        std::cout << "SIZE: " << trainSet_.size() << std::endl;
+        for (const auto& element : trainSet_)
+        {
+            std::cout << "Train #" << idx << std::endl;
+            std::cout << element << std::endl;
+            std::cout << "-------------------------\n";
+            ++idx;
+        }
+    }
+
+    void printTestSet() const
+    {
+        auto idx = 1;
+        std::cout << "###### TEST SET ######\n";
+        std::cout << "SIZE: " << testSet_.size() << std::endl;
+        for (const auto& element : testSet_)
+        {
+            std::cout << "Test #" << idx << std::endl;
+            std::cout << element << std::endl;
+            std::cout << "-------------------------\n";
+            ++idx;
+        }
+    }
+
+    DataType& getTrainSet() const
+    {
+        return trainSet_;
+    }
+
+    DataType& getTestSet() const
+    {
+        return testSet_;
+    }
+
+    void splitData(const float trainPartInPercent)
+    {
+        auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+        auto dataToSplit = dataObjects_;
+
+        std::shuffle(dataToSplit.begin(), dataToSplit.end(), std::default_random_engine(seed));
+
+        // TO DO: make split more "smart" - e.g. how to deal with non-integers?
+        // check if it doesn't go out of range;
+        auto trainBegin = dataToSplit.begin();
+        auto trainEnd = trainBegin + (trainPartInPercent * dataToSplit.size());
+        trainSet_ = {trainBegin, trainEnd};
+
+        auto testBegin = trainEnd;
+        auto testEnd = dataToSplit.end();
+        testSet_ = {testBegin, testEnd};
+    }
+
 private:
     std::vector <DataType> dataObjects_;
+    std::vector <DataType> trainSet_;
+    std::vector <DataType> testSet_;
 
     DataType deserialize(const std::vector<std::string>& serializedData)
     {
