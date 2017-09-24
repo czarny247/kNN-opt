@@ -1,8 +1,9 @@
 cmake_minimum_required (VERSION 3.5)
+set (CMAKE_CXX_STANDARD 11)
 project(Knn_opt)
 
 file(GLOB_RECURSE Knn_opt_SOURCES src/*.cpp)
-file(GLOB_RECURSE Knn_opt_HEADERS src/*.hpp)
+file(GLOB_RECURSE Knn_opt_HEADERS src/*.h*)
 
 set(Knn_opt_INCLUDE_DIRS "")
 foreach (_headerFile ${Knn_opt_HEADERS})
