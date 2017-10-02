@@ -1,5 +1,6 @@
 cmake_minimum_required (VERSION 3.5)
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_BUILD_TYPE Debug)
 project(Knn_opt)
 
 file(GLOB_RECURSE Knn_opt_SOURCES src/*.cpp)
@@ -13,4 +14,5 @@ endforeach()
 list(REMOVE_DUPLICATES Knn_opt_INCLUDE_DIRS)
 
 include_directories(${Knn_opt_INCLUDE_DIRS})
+include_directories(${CMAKE_SOURCE_DIR})
 add_executable (Knn_opt_exec ${Knn_opt_SOURCES})

@@ -2,31 +2,101 @@
 #define DATA_IRIS_HPP_
 
 #include <fstream>
+#include <iostream>
 #include <string>
+#include <vector>
 
 namespace data
 {
 
+// consider making common interface for data classes
+
 struct Iris
 {
     Iris()
-    : sepalLength_(0.0f), sepalWidth_(0.0f), petalLength_(0.0f), petalWidth_(0.0f), species_("")
-    {}
+    : sepalLength_(0.0f), sepalWidth_(0.0f), petalLength_(0.0f),
+    petalWidth_(0.0f), species_("")
+    {
+        // std::cout << "Iris()" << std::endl;
+    }
+
+    ~Iris()
+    {
+        // std::cout << "~Iris()" << std::endl;
+    }
 
     Iris(float sepalLength, float sepalWidth, float petalLength, float petalWidth,
         std::string species)
     : sepalLength_(sepalLength), sepalWidth_(sepalWidth), petalLength_(petalLength),
     petalWidth_(petalWidth), species_(species)
-    {}
+    {
+        // std::cout << "Iris(...)" << std::endl;
+    }
+
+    Iris(const Iris& iris)
+    : sepalLength_(iris.sepalLength_), sepalWidth_(iris.sepalWidth_),
+    petalLength_(iris.petalLength_), petalWidth_(iris.petalWidth_), species_(iris.species_)
+    {
+        // std::cout << "Iris(const Iris& iris)" << std::endl;
+    }
+
+    Iris& operator=(const Iris& iris)
+    {
+        // std::cout << "Iris& operator=(const Iris& iris)" << std::endl;
+
+        sepalLength_ = iris.sepalLength_;
+        sepalWidth_ = iris.sepalWidth_;
+        petalLength_ = iris.petalLength_;
+        petalWidth_ = iris.petalWidth_;
+        species_ = iris.species_;
+        return *this;
+    }
+
+    Iris(const Iris&& iris)
+    : sepalLength_(iris.sepalLength_), sepalWidth_(iris.sepalWidth_),
+    petalLength_(iris.petalLength_), petalWidth_(iris.petalWidth_), species_(iris.species_)
+    {
+        // std::cout << "Iris(const Iris&& iris)" << std::endl;
+    }
+
+    Iris& operator=(const Iris&& iris)
+    {
+        // std::cout << "Iris& operator=(const Iris&& iris)" << std::endl;
+
+        if (this != &iris)
+        {
+            sepalLength_ = iris.sepalLength_;
+            sepalWidth_ = iris.sepalWidth_;
+            petalLength_ = iris.petalLength_;
+            petalWidth_ = iris.petalWidth_;
+            species_ = iris.species_;
+        }
+        return *this;
+    }
 
     float sepalLength_;
     float sepalWidth_;
     float petalLength_;
     float petalWidth_;
     std::string species_;
+
+    // it will be in common interface for data classes
+    std::vector<float> getFeaturesAsVector() const
+    {
+        return {sepalLength_, sepalWidth_, petalLength_, petalWidth_};
+    }
+
+    // also will be in common interface
+    static const std::vector<std::string> possibleClasses;
+
+    // also will be in common interface
+    std::string getClassName() const
+    {
+        return species_;
+    }
 };
 
-std::ostream& operator<< (std::ostream& stream, const Iris& iris)
+inline std::ostream& operator<< (std::ostream& stream, const Iris& iris)
 {
     stream << "sepalLength: " << iris.sepalLength_ << std::endl;
     stream << "sepalWidth: " << iris.sepalWidth_ << std::endl;
@@ -36,7 +106,7 @@ std::ostream& operator<< (std::ostream& stream, const Iris& iris)
     return stream;
 }
 
-std::istream& operator>> (std::istream& stream, Iris& iris)
+inline std::istream& operator>> (std::istream& stream, Iris& iris)
 {
     stream >> iris.sepalLength_
         >> iris.sepalWidth_
@@ -45,8 +115,6 @@ std::istream& operator>> (std::istream& stream, Iris& iris)
         >> iris.species_;
     return stream;
 }
-
-// TO DO: set input operator to make generic input in templated data handler
 
 }  // namespace data
 

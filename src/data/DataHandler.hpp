@@ -40,14 +40,14 @@ public:
         {
             Tokenizer tok(line);
             parsedLine.assign(tok.begin(), tok.end());
-            dataObjects_.push_back(deserialize(parsedLine));
+            dataSet_.push_back(deserialize(parsedLine));
         }
     }
 
     void printData() const
     {
         auto idx = 1;
-        for (const auto& dataObject : dataObjects_)
+        for (const auto& dataObject : dataSet_)
         {
             std::cout << "Iris #" << idx << std::endl;
             std::cout << dataObject << std::endl;
@@ -84,12 +84,17 @@ public:
         }
     }
 
-    DataType& getTrainSet() const
+    const std::vector <DataType>& getDataSet() const
+    {
+        return dataSet_;
+    }
+
+    const std::vector <DataType>& getTrainSet() const
     {
         return trainSet_;
     }
 
-    DataType& getTestSet() const
+    const std::vector <DataType>& getTestSet() const
     {
         return testSet_;
     }
@@ -98,7 +103,7 @@ public:
     {
         auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-        auto dataToSplit = dataObjects_;
+        auto dataToSplit = dataSet_;
 
         std::shuffle(dataToSplit.begin(), dataToSplit.end(), std::default_random_engine(seed));
 
@@ -114,7 +119,7 @@ public:
     }
 
 private:
-    std::vector <DataType> dataObjects_;
+    std::vector <DataType> dataSet_;
     std::vector <DataType> trainSet_;
     std::vector <DataType> testSet_;
 
