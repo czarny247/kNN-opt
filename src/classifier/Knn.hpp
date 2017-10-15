@@ -157,7 +157,7 @@ public:
         {
             makePredictions(testSet, trainSet, k, classNameToAmountMap, correctChoices,
                 boost::none, boost::none);
-            accuracy_ = (2*correctChoices - allChoices) / allChoices;
+            accuracy_ = correctChoices / allChoices;
             return;
         }
 
@@ -201,7 +201,7 @@ private:
         if (numOfThread && numOfThreads)
         {
             begin = testSet.cbegin() + *numOfThread * (testSet.size() / *numOfThreads);
-            end = begin + (testSet.size() / *numOfThreads) - 1;
+            end = begin + (testSet.size() / *numOfThreads);
         }
 
         for (auto it = begin; it != end; it++)
