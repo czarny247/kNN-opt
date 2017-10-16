@@ -99,10 +99,8 @@ public:
         return testSet_;
     }
 
-    void splitData(const float trainPartInPercent)
+    void splitData(const float trainPartInPercent, unsigned int seed)
     {
-        auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-
         auto dataToSplit = dataSet_;
 
         std::shuffle(dataToSplit.begin(), dataToSplit.end(), std::default_random_engine(seed));
