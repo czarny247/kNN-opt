@@ -15,7 +15,9 @@ int main()
     const float split = 0.8;
     float accSumRegular {0.0f};
     float accSumParallel {0.0f};
-    int runs = 100;
+    double timeSumRegular {0.0};
+    double timeSumParallel {0.0};
+    int runs = 1000;
 
     data::DataHandler<data::Iris> irisDataHandler;
     irisDataHandler.loadData("../iris.data");
@@ -37,10 +39,13 @@ int main()
         irisDataHandler.splitData(split, seeds.at(run));
         kNN.predict(irisDataHandler.getTestSet(), irisDataHandler.getTrainSet(), k, boost::none);
         accSumRegular += kNN.getAccuracy();
+        timeSumRegular += kNN.getMeasuredTime();
     }
 
-    std::cout << "Mean accuracy for " << runs << " runs of kNN (k=" << k << ", split=" << split
-        << "): " << accSumRegular/runs << std::endl;
+    std::cout << "Avg accuracy for " << runs << " runs of kNN (k=" << k << ", split=" << split
+        << "): " << round(accSumRegular)/runs << std::endl;
+    std::cout << "Avg time for " << runs << " runs of kNN (k=" << k << ", split=" << split
+        << "): " << timeSumRegular/runs << std::endl;
 
     // std::cout << "Running threaded kNN" << std::endl;
     for (auto run : boost::irange(0, runs))
@@ -50,10 +55,13 @@ int main()
         kNN.predict(irisDataHandler.getTestSet(), irisDataHandler.getTrainSet(), k,
             std::thread::hardware_concurrency());
         accSumParallel += kNN.getAccuracy();
+        timeSumParallel += kNN.getMeasuredTime();
     }
 
-    std::cout << "Mean accuracy for " << runs << " runs of threaded kNN (k=" << k << ", split="
-        << split << "): " << accSumParallel/runs << std::endl;
+    std::cout << "Avg accuracy for " << runs << " runs of threaded kNN (k=" << k << ", split="
+        << split << "): " << round(accSumParallel)/runs << std::endl;
+    std::cout << "Avg time for " << runs << " runs of threaded kNN (k=" << k << ", split="
+        << split << "): " << timeSumParallel/runs << std::endl; // add time unit
 
     return 0;
 }

@@ -2,12 +2,13 @@
 #define CLASSIFIER_KNN_HPP_
 
 #include <algorithm>
-#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <string>
 #include <thread>
 #include <utility>
@@ -17,14 +18,6 @@
 #include <boost/optional.hpp>
 
 #include "src/data/Iris.hpp"
-
-/*#if(ENABLE_OPENMP == 1)
-    #include <omp.h>
-    #pragma message("Compile with OpenMP")
-#else
-    #define OMP_NUM_THREADS 0
-    #pragma message("Compile without OpenMP")
-#endif*/
 
 template <typename DataType>
 using NeighborWithDistance = typename std::pair<DataType, float>;
@@ -150,24 +143,39 @@ public:
         const unsigned int k, const boost::optional<unsigned int> numOfThreads)
     {
         std::map<std::string, int> classNameToAmountMap;
-        std::atomic<int> correctChoices {0};
+        int correctChoices {0};  // could be plain int?
         float allChoices = static_cast<float>(testSet.size());
+
+        auto begin = testSet.cbegin();
+        auto end = testSet.cend();
 
         if (!numOfThreads)
         {
-            makePredictions(testSet, trainSet, k, classNameToAmountMap, correctChoices,
-                boost::none, boost::none);
+            std::clock_t start = std::clock();
+            makePredictions(begin, end, trainSet, k, classNameToAmountMap, correctChoices);
             accuracy_ = correctChoices / allChoices;
+            measuredTime_ = (std::clock() - start) / (double)CLOCKS_PER_SEC;
             return;
         }
 
+        std::vector<int> correctChoicesPerThread;
+
         for (unsigned int numOfThread = 0; numOfThread < *numOfThreads; ++numOfThread)
         {
+            correctChoicesPerThread.push_back(0);  // ugly, temporary solution
+        }
+
+        std::clock_t start = std::clock();
+        for (unsigned int numOfThread = 0; numOfThread < *numOfThreads; ++numOfThread)
+        {
+            begin = testSet.cbegin() + numOfThread * (testSet.size() / *numOfThreads);
+            end = begin + (testSet.size() / *numOfThreads);
+
             workingThreads_.emplace_back(
                 [&, numOfThread]
                 {
-                    this->makePredictions(testSet, trainSet, k, classNameToAmountMap,
-                        correctChoices, numOfThread, numOfThreads);
+                    this->makePredictions(begin, end, trainSet, k, classNameToAmountMap,
+                        correctChoicesPerThread[numOfThread]);
                 });
         }
 
@@ -178,40 +186,42 @@ public:
 
         workingThreads_.clear();
 
-        accuracy_ = correctChoices / allChoices;
+        correctChoices = std::accumulate(correctChoicesPerThread.begin(),
+            correctChoicesPerThread.end(), 0);
 
-        // auto stop = boost::chrono::process_user_cpu_clock::now();
+        accuracy_ = round(correctChoices) / allChoices;
+        measuredTime_ = (std::clock() - start) / (double)CLOCKS_PER_SEC;
     }
 
     float getAccuracy() const {return accuracy_;}
-    // unsigned int getMeasuredTime() const {return measuredTime_;}
+    double getMeasuredTime() const {return measuredTime_;}
 
 private:
     template <typename DataType>
-    void makePredictions(const std::vector<DataType>& testSet,
-        const std::vector<DataType>& trainSet, const unsigned int& k,
-        std::map<std::string, int>& classNameToAmountMap, std::atomic<int>& correctChoices,
-        boost::optional<unsigned int> numOfThread, boost::optional<unsigned int> numOfThreads)
+    void makePredictions(typename std::vector<DataType>::const_iterator& testBegin, // chunk begin, end
+        typename std::vector<DataType>::const_iterator& testEnd,
+        const std::vector<DataType>& trainSet, const unsigned int k,
+        std::map<std::string, int>& classNameToAmountMap, int& correctChoices)
     {
-        LockGuard guard(predictionMutex_);
+        //LockGuard guard(predictionMutex_);
 
-        auto begin = testSet.cbegin();
+        /*auto begin = testSet.cbegin();
         auto end = testSet.cend();
 
         if (numOfThread && numOfThreads)
         {
             begin = testSet.cbegin() + *numOfThread * (testSet.size() / *numOfThreads);
             end = begin + (testSet.size() / *numOfThreads);
-        }
+        }*/
 
-        for (auto it = begin; it != end; it++)
+        for (auto it = testBegin; it != testEnd; it++)
         {
+            predictionMutex_.lock();
             resetClassNameToAmountMap(*it, classNameToAmountMap);
             auto kNearestNeighbors = getNearestNeighbors(getAllNeighbors(*it, trainSet), k);
-
             std::string dominantClassInNeighborhood = chooseClassBasedOnNeighbors(
                 kNearestNeighbors, classNameToAmountMap);
-
+            predictionMutex_.unlock();
             if (dominantClassInNeighborhood == it->getClassName())
             {
                 correctChoices++;
@@ -221,7 +231,7 @@ private:
 
     float accuracy_ {0.0f};
     std::mutex predictionMutex_ {};
-    // unsigned int measuredTime_{0}; // time will be measured outside
+    double measuredTime_{0}; // time will be measured outside, rename to duration
     std::vector<std::thread> workingThreads_;
 };
 
