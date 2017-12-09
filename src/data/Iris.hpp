@@ -17,12 +17,14 @@ struct Iris
     : sepalLength_(0.0f), sepalWidth_(0.0f), petalLength_(0.0f),
     petalWidth_(0.0f), species_("")
     {
-        // std::cout << "Iris()" << std::endl;
+        //++defCtorCalls_;
+        //std::cout << "Iris()" << std::endl;
     }
 
     ~Iris()
     {
-        // std::cout << "~Iris()" << std::endl;
+        //++dtorCalls_;
+        //std::cout << "~Iris()" << std::endl;
     }
 
     Iris(float sepalLength, float sepalWidth, float petalLength, float petalWidth,
@@ -30,20 +32,22 @@ struct Iris
     : sepalLength_(sepalLength), sepalWidth_(sepalWidth), petalLength_(petalLength),
     petalWidth_(petalWidth), species_(species)
     {
-        // std::cout << "Iris(...)" << std::endl;
+        //++argCtorCalls_;
+        //std::cout << "Iris(...)" << std::endl;
     }
 
     Iris(const Iris& iris)
     : sepalLength_(iris.sepalLength_), sepalWidth_(iris.sepalWidth_),
     petalLength_(iris.petalLength_), petalWidth_(iris.petalWidth_), species_(iris.species_)
     {
-        // std::cout << "Iris(const Iris& iris)" << std::endl;
+        //++cpCtorCalls_;
+        //std::cout << "Iris(const Iris& iris)" << std::endl;
     }
 
     Iris& operator=(const Iris& iris)
     {
-        // std::cout << "Iris& operator=(const Iris& iris)" << std::endl;
-
+        //++cpAssOpCalls_;
+        //std::cout << "Iris& operator=(const Iris& iris)" << std::endl;
         sepalLength_ = iris.sepalLength_;
         sepalWidth_ = iris.sepalWidth_;
         petalLength_ = iris.petalLength_;
@@ -52,16 +56,18 @@ struct Iris
         return *this;
     }
 
-    Iris(const Iris&& iris)
+    Iris(Iris&& iris)
     : sepalLength_(iris.sepalLength_), sepalWidth_(iris.sepalWidth_),
     petalLength_(iris.petalLength_), petalWidth_(iris.petalWidth_), species_(iris.species_)
     {
-        // std::cout << "Iris(const Iris&& iris)" << std::endl;
+        //++mvCtorCalls_;
+        //std::cout << "Iris(const Iris&& iris)" << std::endl;
     }
 
-    Iris& operator=(const Iris&& iris)
+    Iris& operator=(Iris&& iris)
     {
-        // std::cout << "Iris& operator=(const Iris&& iris)" << std::endl;
+        //++mvAssOpCalls_;
+        //std::cout << "Iris& operator=(const Iris&& iris)" << std::endl;
 
         if (this != &iris)
         {
@@ -87,13 +93,22 @@ struct Iris
     }
 
     // also will be in common interface
-    static const std::vector<std::string> possibleClasses;
+    static const std::vector<std::string> possibleClasses_;
+    /*static int defCtorCalls_;
+    static int argCtorCalls_;
+    static int cpCtorCalls_;
+    static int cpAssOpCalls_;
+    static int mvCtorCalls_;
+    static int mvAssOpCalls_;
+    static int dtorCalls_;*/
 
     // also will be in common interface
     std::string getClassName() const
     {
         return species_;
     }
+
+    //static void showCallsSummary();
 };
 
 inline std::ostream& operator<< (std::ostream& stream, const Iris& iris)

@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <random>
 #include <sstream>
 #include <string>
@@ -50,7 +51,7 @@ public:
         for (const auto& dataObject : dataSet_)
         {
             std::cout << "Iris #" << idx << std::endl;
-            std::cout << dataObject << std::endl;
+            std::cout << *dataObject << std::endl;
             std::cout << "-------------------------\n";
             ++idx;
         }
@@ -64,7 +65,7 @@ public:
         for (const auto& element : trainSet_)
         {
             std::cout << "Train #" << idx << std::endl;
-            std::cout << element << std::endl;
+            std::cout << *element << std::endl;
             std::cout << "-------------------------\n";
             ++idx;
         }
@@ -78,56 +79,55 @@ public:
         for (const auto& element : testSet_)
         {
             std::cout << "Test #" << idx << std::endl;
-            std::cout << element << std::endl;
+            std::cout << *element << std::endl;
             std::cout << "-------------------------\n";
             ++idx;
         }
     }
 
-    const std::vector <DataType>& getDataSet() const
+    const std::vector <std::shared_ptr<DataType>>& getDataSet() const
     {
         return dataSet_;
     }
 
-    const std::vector <DataType>& getTrainSet() const
+    const std::vector <std::shared_ptr<DataType>>& getTrainSet() const
     {
         return trainSet_;
     }
 
-    const std::vector <DataType>& getTestSet() const
+    const std::vector <std::shared_ptr<DataType>>& getTestSet() const
     {
         return testSet_;
     }
 
     void splitData(const float trainPartInPercent, unsigned int seed)
     {
-        auto dataToSplit = dataSet_;
-
-        std::shuffle(dataToSplit.begin(), dataToSplit.end(), std::default_random_engine(seed));
+        //add keep dataset with orginal order option - but it makes copy to make shuffle
+        std::shuffle(dataSet_.begin(), dataSet_.end(), std::default_random_engine(seed));
 
         // TO DO: make split more "smart" - e.g. how to deal with non-integers?
         // check if it doesn't go out of range;
-        auto trainBegin = dataToSplit.begin();
-        auto trainEnd = trainBegin + (trainPartInPercent * dataToSplit.size());
+        auto trainBegin = dataSet_.begin();
+        auto trainEnd = trainBegin + (trainPartInPercent * dataSet_.size());
         trainSet_ = {trainBegin, trainEnd};
 
         auto testBegin = trainEnd;
-        auto testEnd = dataToSplit.end();
+        auto testEnd = dataSet_.end();
         testSet_ = {testBegin, testEnd};
     }
 
 private:
-    std::vector <DataType> dataSet_;
-    std::vector <DataType> trainSet_;
-    std::vector <DataType> testSet_;
+    std::vector <std::shared_ptr<DataType>> dataSet_;
+    std::vector <std::shared_ptr<DataType>> trainSet_;
+    std::vector <std::shared_ptr<DataType>> testSet_;
 
-    DataType deserialize(const std::vector<std::string>& serializedData)
+    std::shared_ptr<DataType> deserialize(const std::vector<std::string>& serializedData)
     {
         std::stringstream streamedData;
         std::copy(serializedData.begin(), serializedData.end(),
             std::ostream_iterator<std::string>(streamedData, "\n"));
-        DataType dataObject;
-        streamedData >> dataObject;
+        std::shared_ptr<DataType> dataObject = std::make_shared<DataType>();
+        streamedData >> *dataObject;
         return dataObject;
     }
 };
