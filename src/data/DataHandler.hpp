@@ -39,6 +39,10 @@ public:
 
         while (std::getline(in, line))
         {
+            if (line.find('?') != std::string::npos)
+            {
+                continue;
+            }
             Tokenizer tok(line);
             parsedLine.assign(tok.begin(), tok.end());
             dataSet_.push_back(deserialize(parsedLine));
@@ -50,7 +54,7 @@ public:
         auto idx = 1;
         for (const auto& dataObject : dataSet_)
         {
-            std::cout << "Iris #" << idx << std::endl;
+            std::cout << "Obj #" << idx << std::endl;
             std::cout << *dataObject << std::endl;
             std::cout << "-------------------------\n";
             ++idx;
