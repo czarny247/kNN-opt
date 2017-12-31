@@ -5,7 +5,9 @@
 #include <array>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,6 +27,38 @@ struct Mushroom
     std::string attributes_;
     std::vector<AttributeNameWithValue> attributesNamesWithValues_;
     static const std::array<std::string, 23> names_;
+    static const std::vector<std::string> possibleClasses_;
+    static const std::map<std::string, std::string> attributeNameToCorrectVaules_;
+
+    std::string getClassName() const
+    {
+        return std::string(1, attributes_[0]);
+    }
+
+    std::vector<float> getFeaturesAsVector()
+    {
+        std::vector<float> featuresVector;
+
+        for (const AttributeNameWithValue& attributeNameWithValue : attributesNamesWithValues_)
+        {
+            auto featureAsNumeric = attributeNameToCorrectVaules_.at(attributeNameWithValue.first)
+                .find(*attributeNameWithValue.second);
+            featuresVector.push_back(++featureAsNumeric);
+        }
+
+        /*std::istringstream iss(attributes_);
+        std::copy(std::istream_iterator<float>(iss), std::istream_iterator<float>(),
+            std::back_inserter(featuresVector));*/
+
+        for (const auto& fv : featuresVector)
+        {
+            std::cout << fv << ", ";
+        }
+
+        std::cout << std::endl;
+
+        return featuresVector;
+    }
 };
 
 namespace
