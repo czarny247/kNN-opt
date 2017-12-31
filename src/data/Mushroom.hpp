@@ -29,6 +29,7 @@ struct Mushroom
     static const std::array<std::string, 23> names_;
     static const std::vector<std::string> possibleClasses_;
     static const std::map<std::string, std::string> attributeNameToCorrectVaules_;
+    std::vector<float> featuresVector_;
 
     std::string getClassName() const
     {
@@ -37,27 +38,17 @@ struct Mushroom
 
     std::vector<float> getFeaturesAsVector()
     {
-        std::vector<float> featuresVector;
+        return featuresVector_;
+    }
 
+    void prepareFeaturesFloatVector()
+    {
         for (const AttributeNameWithValue& attributeNameWithValue : attributesNamesWithValues_)
         {
             auto featureAsNumeric = attributeNameToCorrectVaules_.at(attributeNameWithValue.first)
                 .find(*attributeNameWithValue.second);
-            featuresVector.push_back(++featureAsNumeric);
+            featuresVector_.push_back(++featureAsNumeric);
         }
-
-        /*std::istringstream iss(attributes_);
-        std::copy(std::istream_iterator<float>(iss), std::istream_iterator<float>(),
-            std::back_inserter(featuresVector));*/
-
-        for (const auto& fv : featuresVector)
-        {
-            std::cout << fv << ", ";
-        }
-
-        std::cout << std::endl;
-
-        return featuresVector;
     }
 };
 
@@ -94,6 +85,7 @@ inline std::istream& operator>> (std::istream& stream, Mushroom& mushroom)
 
     mushroom.attributes_ = content;
     associateAttributeNamesWithValues(mushroom);
+    mushroom.prepareFeaturesFloatVector();
     return stream;
 }
 
