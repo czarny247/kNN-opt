@@ -19,6 +19,16 @@
 
 #include "src/data/Iris.hpp"
 
+
+namespace
+{
+
+template <typename DataType>
+using DataTypePtr = std::shared_ptr<DataType>;
+
+template <typename DataType>
+using DataTypePtrVec = std::vector<std::shared_ptr<DataType>>;
+
 template <typename DataType>
 using NeighborWithDistance = typename std::pair<std::shared_ptr<DataType> , float>;
 
@@ -28,12 +38,10 @@ using NeighborsWithDistances =
 
 using LockGuard = std::lock_guard<std::mutex>;
 
-namespace
-{
+using ClassNameToAmountMap = std::map<std::string, int>;
 
 template <typename DataType>
-float countEuclideanDistance(const std::shared_ptr<DataType>& lhs,
-    const std::shared_ptr<DataType>& rhs)
+float countEuclideanDistance(const DataTypePtr<DataType>& lhs, const DataTypePtr<DataType>& rhs)
 {
     auto lhsFeatures = lhs->getFeaturesAsVector();
     auto rhsFeatures = rhs->getFeaturesAsVector();
@@ -49,8 +57,8 @@ float countEuclideanDistance(const std::shared_ptr<DataType>& lhs,
 }
 
 template <typename DataType>
-NeighborsWithDistances<DataType> getAllNeighbors(const std::shared_ptr<DataType>& test,
-    const std::vector<std::shared_ptr<DataType>>& trainSet)
+NeighborsWithDistances<DataType> getAllNeighbors(const DataTypePtr<DataType>& test,
+    const DataTypePtrVec<DataType>& trainSet)
 {
     NeighborsWithDistances<DataType> neighborsWithDistances;
 
@@ -77,8 +85,7 @@ NeighborsWithDistances<DataType> getNearestNeighbors(NeighborsWithDistances<Data
 }
 
 template <typename DataType>
-void resetClassNameToAmountMap(const DataType& test,
-    std::map<std::string, int>& classNameToAmountMap)
+void resetClassNameToAmountMap(const DataType& test, ClassNameToAmountMap& classNameToAmountMap)
 {
     if (classNameToAmountMap.empty())
     {
@@ -97,7 +104,7 @@ void resetClassNameToAmountMap(const DataType& test,
 
 template <typename DataType>
 std::string chooseClassBasedOnNeighbors(const NeighborsWithDistances<DataType>& kNearestNeighbors,
-    std::map<std::string, int>& classNameToAmountMap)
+    ClassNameToAmountMap& classNameToAmountMap)
 {
     for (const auto& kNearestNeighbor : kNearestNeighbors)
     {
@@ -128,39 +135,95 @@ namespace classifier
 class Knn
 {
 public:
+    static const unsigned int singleThread = 1;
+
     template <typename DataType>
-    void predict(const std::vector <std::shared_ptr<DataType>>& testSet,
-        const std::vector <std::shared_ptr<DataType>>& trainSet,
-        const unsigned int k, const boost::optional<unsigned int> numOfThreads)
+    void predict(const DataTypePtrVec<DataType>& testSet,
+        const DataTypePtrVec<DataType>& trainSet,
+        const unsigned int k, const unsigned int numOfThreads)
     {
-        std::map<std::string, int> classNameToAmountMap;
+        ClassNameToAmountMap classNameToAmountMap;
         int correctChoices {0};
-        float allChoices = static_cast<float>(testSet.size());
+        // float allChoices = static_cast<float>(testSet.size());
+
+        // todo: consider how to acheive it differently - maybe ask at 'so'?
+        using namespace std::placeholders;
+
+        auto performPredicitons = numOfThreads == singleThread
+            ? std::bind(&Knn::performSequentialPredictions<DataType>, this, _1, _2, _3, _4, _5, _6)
+            : std::bind(&Knn::performParallelPredictions<DataType>, this, _1, _2, _3, _4, _5, _6);
+
+        performPredicitons(testSet, trainSet, k, classNameToAmountMap, correctChoices,
+            numOfThreads);
+    }
+
+    float getAccuracy() const {return accuracy_;}
+    double getMeasuredTime() const {return measuredTime_;}
+
+
+private:
+    template <typename DataType>
+    void makePredictions(
+        typename DataTypePtrVec<DataType>::const_iterator& testBegin,
+        typename DataTypePtrVec<DataType>::const_iterator& testEnd,
+        const DataTypePtrVec<DataType>& trainSet, const unsigned int k,
+        ClassNameToAmountMap& classNameToAmountMap, int& correctChoices)
+    {
+        for (auto it = testBegin; it != testEnd; it++)
+        {
+            predictionMutex_.lock();
+            resetClassNameToAmountMap(*it, classNameToAmountMap);
+            auto kNearestNeighbors = getNearestNeighbors(getAllNeighbors(*it, trainSet), k);
+            std::string dominantClassInNeighborhood = chooseClassBasedOnNeighbors(
+                kNearestNeighbors, classNameToAmountMap);
+            predictionMutex_.unlock();
+            if (dominantClassInNeighborhood == (*it)->getClassName())
+            {
+                correctChoices++;
+            }
+        }
+    }
+
+    template <typename DataType>
+    void performSequentialPredictions(
+        const DataTypePtrVec<DataType>& testSet,
+        const DataTypePtrVec<DataType>& trainSet, const unsigned int k,
+        ClassNameToAmountMap& classNameToAmountMap, int& correctChoices,
+        const unsigned int numOfThreads)
+    {
+        const float allChoices = static_cast<float>(testSet.size());
+        (void)numOfThreads;  // define 'unused' macro
+        std::clock_t start = std::clock();
 
         auto begin = testSet.cbegin();
         auto end = testSet.cend();
 
-        if (!numOfThreads)
-        {
-            std::clock_t start = std::clock();
-            makePredictions(begin, end, trainSet, k, classNameToAmountMap, correctChoices);
-            accuracy_ = correctChoices / allChoices;
-            measuredTime_ = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-            return;
-        }
+        makePredictions(begin, end, trainSet, k, classNameToAmountMap,
+            correctChoices);
+        accuracy_ = correctChoices / allChoices;
+        measuredTime_ = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    }
 
-        std::vector<int> correctChoicesPerThread;
+    template <typename DataType>
+    void performParallelPredictions(
+        const DataTypePtrVec<DataType>& testSet,
+        const DataTypePtrVec<DataType>& trainSet, const unsigned int k,
+        ClassNameToAmountMap& classNameToAmountMap, int& correctChoices,
+        const unsigned int numOfThreads)
+    {
+        std::vector<int> correctChoicesPerThread(numOfThreads, 0);
 
-        for (unsigned int numOfThread = 0; numOfThread < *numOfThreads; ++numOfThread)
-        {
-            correctChoicesPerThread.push_back(0);
-        }
+        auto begin = testSet.cbegin();
+        auto end = testSet.cend();
+
+        const float allChoices = static_cast<float>(testSet.size());
+        const auto setSizeToThreadsRatio = testSet.size() / numOfThreads;
 
         std::clock_t start = std::clock();
-        for (unsigned int numOfThread = 0; numOfThread < *numOfThreads; ++numOfThread)
+        for (unsigned int numOfThread = 0; numOfThread < numOfThreads; ++numOfThread)
         {
-            begin = testSet.cbegin() + numOfThread * (testSet.size() / *numOfThreads);
-            end = begin + (testSet.size() / *numOfThreads);
+            begin = testSet.cbegin() + numOfThread * setSizeToThreadsRatio;
+            end = begin + setSizeToThreadsRatio;
 
             workingThreads_.emplace_back(
                 [&, numOfThread]
@@ -182,32 +245,6 @@ public:
 
         accuracy_ = round(correctChoices) / allChoices;
         measuredTime_ = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-    }
-
-    float getAccuracy() const {return accuracy_;}
-    double getMeasuredTime() const {return measuredTime_;}
-
-private:
-    template <typename DataType>
-    void makePredictions(
-        typename std::vector <std::shared_ptr<DataType>>::const_iterator& testBegin,
-        typename std::vector <std::shared_ptr<DataType>>::const_iterator& testEnd,
-        const std::vector <std::shared_ptr<DataType>>& trainSet, const unsigned int k,
-        std::map<std::string, int>& classNameToAmountMap, int& correctChoices)
-    {
-        for (auto it = testBegin; it != testEnd; it++)
-        {
-            predictionMutex_.lock();
-            resetClassNameToAmountMap(*it, classNameToAmountMap);
-            auto kNearestNeighbors = getNearestNeighbors(getAllNeighbors(*it, trainSet), k);
-            std::string dominantClassInNeighborhood = chooseClassBasedOnNeighbors(
-                kNearestNeighbors, classNameToAmountMap);
-            predictionMutex_.unlock();
-            if (dominantClassInNeighborhood == (*it)->getClassName())
-            {
-                correctChoices++;
-            }
-        }
     }
 
     float accuracy_ {0.0f};

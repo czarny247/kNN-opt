@@ -17,7 +17,7 @@ int main()
     float accSumParallel {0.0f};
     double timeSumRegular {0.0};
     double timeSumParallel {0.0};
-    int runs = 10000;
+    int runs = 10;
 
     data::DataHandler<data::Iris> irisDataHandler;
     irisDataHandler.loadData("../iris.data");
@@ -36,7 +36,8 @@ int main()
     for (auto run : boost::irange(0, runs))
     {
         irisDataHandler.splitData(split, seeds.at(run));
-        kNN.predict(irisDataHandler.getTestSet(), irisDataHandler.getTrainSet(), k, boost::none);
+        kNN.predict(irisDataHandler.getTestSet(), irisDataHandler.getTrainSet(), k,
+            classifier::Knn::singleThread);
         accSumRegular += kNN.getAccuracy();
         timeSumRegular += kNN.getMeasuredTime();
     }
