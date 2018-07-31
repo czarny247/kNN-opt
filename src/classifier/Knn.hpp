@@ -2,26 +2,25 @@
 #define CLASSIFIER_KNN_HPP_
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
-#include <iostream>
+#include <ctime>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <numeric>
 #include <string>
 #include <thread>
-#include <utility>
 #include <vector>
 
-#include <boost/chrono/process_cpu_clocks.hpp>
 #include <boost/optional.hpp>
 
 #include "src/data/Iris.hpp"
 
-
 namespace
 {
+
+//TODO: move aliases to fwd files - they can be reused
 
 template <typename DataType>
 using DataTypePtr = std::shared_ptr<DataType>;
@@ -30,13 +29,8 @@ template <typename DataType>
 using DataTypePtrVec = std::vector<std::shared_ptr<DataType>>;
 
 template <typename DataType>
-using NeighborWithDistance = typename std::pair<std::shared_ptr<DataType> , float>;
-
-template <typename DataType>
 using NeighborsWithDistances =
     typename std::vector<std::pair<std::shared_ptr<DataType>, float> >;
-
-using LockGuard = std::lock_guard<std::mutex>;
 
 using ClassNameToAmountMap = std::map<std::string, int>;
 
@@ -144,11 +138,11 @@ public:
     {
         ClassNameToAmountMap classNameToAmountMap;
         int correctChoices {0};
-        // float allChoices = static_cast<float>(testSet.size());
 
-        // todo: consider how to acheive it differently - maybe ask at 'so'?
         using namespace std::placeholders;
 
+        // TODO: consider how to acheive it differently - maybe ask at 'so'?
+        // TODO: consider making it with strategy pattern
         auto performPredicitons = numOfThreads == singleThread
             ? std::bind(&Knn::performSequentialPredictions<DataType>, this, _1, _2, _3, _4, _5, _6)
             : std::bind(&Knn::performParallelPredictions<DataType>, this, _1, _2, _3, _4, _5, _6);
@@ -164,8 +158,8 @@ public:
 private:
     template <typename DataType>
     void makePredictions(
-        typename DataTypePtrVec<DataType>::const_iterator& testBegin,
-        typename DataTypePtrVec<DataType>::const_iterator& testEnd,
+        typename DataTypePtrVec<DataType>::const_iterator testBegin,
+        typename DataTypePtrVec<DataType>::const_iterator testEnd,
         const DataTypePtrVec<DataType>& trainSet, const unsigned int k,
         ClassNameToAmountMap& classNameToAmountMap, int& correctChoices)
     {
@@ -176,11 +170,11 @@ private:
             auto kNearestNeighbors = getNearestNeighbors(getAllNeighbors(*it, trainSet), k);
             std::string dominantClassInNeighborhood = chooseClassBasedOnNeighbors(
                 kNearestNeighbors, classNameToAmountMap);
-            predictionMutex_.unlock();
             if (dominantClassInNeighborhood == (*it)->getClassName())
             {
-                correctChoices++;
+                ++correctChoices;
             }
+            predictionMutex_.unlock();
         }
     }
 
@@ -192,7 +186,7 @@ private:
         const unsigned int numOfThreads)
     {
         const float allChoices = static_cast<float>(testSet.size());
-        (void)numOfThreads;  // define 'unused' macro
+        (void)numOfThreads;  //TODO: define 'unused' macro
         std::clock_t start = std::clock();
 
         auto begin = testSet.cbegin();
@@ -217,13 +211,18 @@ private:
         auto end = testSet.cend();
 
         const float allChoices = static_cast<float>(testSet.size());
-        const auto setSizeToThreadsRatio = testSet.size() / numOfThreads;
+        const auto setSizeToThreadsRatio = ceil(allChoices / numOfThreads);
 
         std::clock_t start = std::clock();
         for (unsigned int numOfThread = 0; numOfThread < numOfThreads; ++numOfThread)
         {
-            begin = testSet.cbegin() + numOfThread * setSizeToThreadsRatio;
-            end = begin + setSizeToThreadsRatio;
+            end = begin;
+
+            auto nextEndPos = (end - testSet.begin()) + setSizeToThreadsRatio > testSet.size() 
+                ?   testSet.size() - (end - testSet.begin())
+                :   (end - testSet.begin()) + setSizeToThreadsRatio;
+
+            std::advance(end, nextEndPos);
 
             workingThreads_.emplace_back(
                 [&, numOfThread]
@@ -231,6 +230,8 @@ private:
                     this->makePredictions(begin, end, trainSet, k, classNameToAmountMap,
                         correctChoicesPerThread[numOfThread]);
                 });
+
+            begin = end;
         }
 
         for (auto& thread : workingThreads_)
@@ -244,12 +245,13 @@ private:
             correctChoicesPerThread.end(), 0);
 
         accuracy_ = round(correctChoices) / allChoices;
+
         measuredTime_ = (std::clock() - start) / (double)CLOCKS_PER_SEC;
     }
 
     float accuracy_ {0.0f};
     std::mutex predictionMutex_ {};
-    double measuredTime_{0};
+    double measuredTime_ {0};
     std::vector<std::thread> workingThreads_;
 };
 
