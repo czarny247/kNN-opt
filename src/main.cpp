@@ -32,7 +32,7 @@ int main()
         seeds.push_back(rd());
     }
 
-    std::cout << "Running non-threaded kNN" << std::endl;
+    std::cout << "Running single-threaded kNN" << std::endl;
     for (auto run : boost::irange(0, runs))
     {
         irisDataHandler.splitData(split, seeds.at(run));
@@ -47,12 +47,15 @@ int main()
     std::cout << "Avg time for " << runs << " runs of kNN (k=" << k << ", split=" << split
         << "): " << timeSumRegular/runs << " seconds." << std::endl;
 
-    std::cout << "Running threaded kNN" << std::endl;
+	const auto threads = std::thread::hardware_concurrency();
+
+    std::cout << "Running " << threads << "-threaded kNN" << std::endl;
     for (auto run : boost::irange(0, runs))
     {
         irisDataHandler.splitData(split, seeds.at(run));
+
         kNN.predict(irisDataHandler.getTestSet(), irisDataHandler.getTrainSet(), k,
-            std::thread::hardware_concurrency());
+			threads);
         accSumParallel += kNN.getAccuracy();
         timeSumParallel += kNN.getMeasuredTime();
     }

@@ -2,9 +2,7 @@
 #define DATA_HANDLER_HPP_
 
 #include <algorithm>
-#include <chrono>
-#include <ctime>
-#include <cstdlib>
+//#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -34,7 +32,7 @@ public:
             return;
         }
 
-        std::vector <std::string> parsedLine;
+        std::vector<std::string> parsedLine;
         std::string line;
 
         while (std::getline(in, line))
@@ -89,28 +87,28 @@ public:
         }
     }
 
-    const std::vector <std::shared_ptr<DataType>>& getDataSet() const
+    const std::vector<std::shared_ptr<DataType>>& getDataSet() const
     {
         return dataSet_;
     }
 
-    const std::vector <std::shared_ptr<DataType>>& getTrainSet() const
+    const std::vector<std::shared_ptr<DataType>>& getTrainSet() const
     {
         return trainSet_;
     }
 
-    const std::vector <std::shared_ptr<DataType>>& getTestSet() const
+    const std::vector<std::shared_ptr<DataType>>& getTestSet() const
     {
         return testSet_;
     }
 
     void splitData(const float trainPartInPercent, unsigned int seed)
     {
-        //add keep dataset with orginal order option - but it makes copy to make shuffle
+        //TODO: add keep dataset with orginal order option - but it makes copy to make shuffle
         std::shuffle(dataSet_.begin(), dataSet_.end(), std::default_random_engine(seed));
 
-        // TO DO: make split more "smart" - e.g. how to deal with non-integers?
-        // check if it doesn't go out of range;
+        //TODO: make split more "smart" - e.g. how to deal with non-integers?
+        //TODO: check if it doesn't go out of range.
         auto trainBegin = dataSet_.begin();
         auto trainEnd = trainBegin + (trainPartInPercent * dataSet_.size());
         trainSet_ = {trainBegin, trainEnd};
@@ -121,9 +119,9 @@ public:
     }
 
 private:
-    std::vector <std::shared_ptr<DataType>> dataSet_;
-    std::vector <std::shared_ptr<DataType>> trainSet_;
-    std::vector <std::shared_ptr<DataType>> testSet_;
+    std::vector<std::shared_ptr<DataType>> dataSet_;
+    std::vector<std::shared_ptr<DataType>> trainSet_;
+    std::vector<std::shared_ptr<DataType>> testSet_;
 
     std::shared_ptr<DataType> deserialize(const std::vector<std::string>& serializedData)
     {
